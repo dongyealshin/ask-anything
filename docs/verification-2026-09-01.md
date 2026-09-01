@@ -92,3 +92,78 @@ Claude Artifact는 보는 사람도 Claude 로그인이 필요해 공개 공유�
 | `docs/screenshots/player-jackpot.png` | ★3 결과 (수정 전) |
 | `docs/screenshots/player-jackpot2.png` | ★3 결과 (수정 후 — 문구 가독성 확보) |
 | `docs/screenshots/player-mobile.png` | 뽑기 화면 (375px, 카드 7장, 긴 문구) |
+
+
+---
+
+# 성능 최적화 (2026-09-01 추가)
+
+"이모티콘 이펙트 나올 때 렉이 걸린다"는 사용자 보고에 대응.
+
+## 측정 환경의 한계 (먼저 명시)
+
+헤드리스 Chromium은 컴포지터가 돌지 않아 **프레임레이트를 측정할 수 없다** — 2.6초 동안
+`requestAnimationFrame`이 2회만 실행됐다. 따라서 실제 fps 개선치는 **미검증**이며,
+아래 수치는 파티클 렌더링에 드는 **메인스레드 작업량**을 마이크로벤치로 잰 것이다.
+
+## 원인 분석
+
+첫 가설(이모지 `fillText` 비용)만으로는 설명되지 않았다. 소프트웨어 렌더링 기준 180개
+× 1.64ms/프레임으로 절대값이 작았기 때문이다. 구조적으로 비싼 원인을 4개 찾았다.
+
+| 원인 | 문제 |
+|---|---|
+| 전체화면 캔버스를 DPR 그대로 사용 | DPR 2 환경에서 매 프레임 3840×2160 텍스처를 GPU에 업로드 |
+| `holo`의 `background-position` 애니메이션 | 컴포지터 가속이 안 되어 3.4초 × 3회 동안 매 프레임 카드 전체(44px 그림자 포함)를 재페인트 — 파티클과 정확히 동시에 발생 |
+| `shake()`가 `#app` 전체에 transform | 3D 카드 서브트리 전체가 재래스터화 (레이어 승격 힌트 없음) |
+| 물리 연산이 `1/60` 고정 | 저사양에서 느려지고 120Hz에서 2배 빨라짐 — 렉을 체감상 악화 |
+
+부수적으로 파티클마다 `size: 14 + Math.random()*20`(연속 float)을 써서 글리프 캐시가
+매 파티클·매 프레임 미스됐고, `parts.filter()`가 프레임당 배열을 새로 할당했다.
+
+## 조치
+
+| 항목 | 변경 |
+|---|---|
+| 이모지 렌더 | 이모지당 1회 72px 스프라이트로 굽고 `drawImage`로 그림. 루프에서 `fillText`·`font` 설정·`save/restore` 제거 |
+| 캔버스 해상도 | `MAX_DPR = 1.5` 캡 → DPR 2 환경에서 픽셀 44% 감소 |
+| holo | `background-position` → `transform: translate3d` (컴포지터 가속) + `will-change` |
+| shake | `.shaking`에 `will-change: transform`, keyframes를 `translate3d`로 |
+| 별 반짝임 | `body::before`에 `will-change: opacity`로 레이어 승격 |
+| 물리 | dt 기반(1/30 클램프)으로 전환 — 프레임레이트 무관하게 동일 속도 |
+| 배열 | `filter()` 제거, 제자리 압축으로 프레임당 GC 제거 |
+| 기기 대응 | `hardwareConcurrency`/`deviceMemory`로 파티클 계수 0.45~1.0, 화면 면적 반영 |
+| 자동 스로틀 | 프레임 EMA가 26ms를 넘으면 품질 계수를 단계적으로 낮추고 살아있는 파티클을 30% 덜어냄. 회복되면 서서히 복귀 |
+| 상한 | 살아있는 파티클 `HARD_CAP = 240` |
+
+## 측정 결과 (마이크로벤치, 1440×900 캔버스, 60프레임 평균)
+
+| 파티클 수 | 개선 전 | 개선 후 | 배수 |
+|---|---|---|---|
+| 60개 (★1) | 0.44 ms/프레임 | 0.26 ms/프레임 | 1.69× |
+| 180개 (★3 최악) | 2.96 ms/프레임 | 0.51 ms/프레임 | **5.8×** |
+
+개선 전 = DPR 2 캔버스 + `save/restore` + `font` 문자열 + `fillText`
+개선 후 = DPR 1.5 캔버스 + 스프라이트 + `setTransform` + `drawImage`
+
+`holo`·`shake`·별 반짝임의 컴포지팅 개선은 마이크로벤치로 잴 수 없어 수치가 없다.
+체감 렉의 상당 부분이 여기에 있었을 가능성이 높다.
+
+## 코드 검토에서 잡은 결함 2건
+
+| 결함 | 수정 |
+|---|---|
+| `budget()`의 `Math.max(12, ...)`가 `HARD_CAP`을 무력화 — 상한을 넘겨 파티클 추가 | 남은 자리를 먼저 계산해 `Math.min(Math.max(wanted,12), room)`으로 변경 |
+| 캔버스 컨텍스트 객체에 커스텀 속성(`ctx2d.dpr`)을 붙이는 몽키패칭 | 모듈 변수 `dprScale`로 분리 |
+
+## 회귀 방지 테스트
+
+`test/fx-budget.test.mjs` 7개 추가 (전체 **32/32 통과**) — DPR 캡, 파티클 상한,
+`budget` 산식이 상한을 넘지 않음, 저사양 계수, 자동 스로틀 존재, 루프에서
+`fillText`/`font`/`save` 미사용, dt 기반 물리.
+
+## 부수 효과
+
+`holo`를 transform 방식으로 바꾸면서 **홀로그램 오버레이가 처음으로 제대로 렌더**된다.
+이전에는 `mix-blend-mode` 제거 후에도 `background-position` 방식이 3D 변환 컨텍스트에서
+보이지 않았다. 스크린샷: `docs/screenshots/opt-jackpot.png`(★3), `opt-normal.png`(★2)
