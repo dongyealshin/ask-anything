@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무엇이든 물어보세요</title>
+<meta name="description" content="문구를 미리 써두고 링크를 공유하면, 받은 사람이 카드를 뽑아 문구 하나를 무작위로 보는 카드 뽑기 사이트">
+<style>
+:root{
+  --bg:#131a3a; --deep:#0c1129; --gold:#e8c46a; --gold-hi:#f5dfa3;
+  --ink:#e6e9f5; --muted:#98a0c4; --line:rgba(232,196,106,.24);
+  --panel:rgba(255,255,255,.035);
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:
+    radial-gradient(120% 78% at 50% -12%, #26326e 0%, rgba(38,50,110,0) 58%),
+    radial-gradient(90% 60% at 100% 105%, #1b2352 0%, rgba(27,35,82,0) 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.55;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 18%, #fff 40%, transparent 41%),
+    radial-gradient(1.1px 1.1px at 78% 12%, #ffeab6 40%, transparent 41%),
+    radial-gradient(1.6px 1.6px at 32% 62%, #fff 40%, transparent 41%),
+    radial-gradient(1.1px 1.1px at 88% 48%, #fff 40%, transparent 41%),
+    radial-gradient(1.3px 1.3px at 62% 84%, #ffeab6 40%, transparent 41%),
+    radial-gradient(1px 1px at 8% 78%, #fff 40%, transparent 41%),
+    radial-gradient(1.2px 1.2px at 48% 30%, #fff 40%, transparent 41%),
+    radial-gradient(1px 1px at 94% 78%, #fff 40%, transparent 41%);
+  animation:twinkle 5.5s ease-in-out infinite alternate;
+}
+@keyframes twinkle{from{opacity:.32}to{opacity:.7}}
+
+#app{position:relative;max-width:1000px;margin:0 auto;padding:34px 18px 72px}
+/* 카드 위 · 결과 패널 아래 (문구 가독성 확보) */
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+
+/* ---------- hero ---------- */
+.hero{text-align:center;margin:0 0 26px}
+.eyebrow{margin:0 0 10px;font-size:10px;letter-spacing:.34em;color:var(--gold);opacity:.82}
+.display{
+  margin:0 0 12px;font-size:clamp(30px,6.4vw,50px);line-height:1.16;font-weight:800;
+  letter-spacing:-.01em;
+  background:linear-gradient(178deg,#fff8e6 6%,var(--gold-hi) 42%,#c99f43 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 34px rgba(232,196,106,.16);
+  overflow-wrap:break-word;
+}
+.lead{margin:0 auto;max-width:46ch;color:var(--muted);font-size:14px;line-height:1.65}
+.play-hero{margin-bottom:22px}
+
+.notice{
+  max-width:640px;margin:0 auto 22px;padding:11px 15px;border-radius:12px;
+  background:rgba(232,196,106,.09);border:1px solid var(--line);
+  color:var(--gold-hi);font-size:13px;text-align:center;
+}
+
+/* ---------- layout ---------- */
+.grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (min-width:861px){.preview-panel{position:sticky;top:24px}}
+.panel{
+  background:var(--panel);border:1px solid rgba(232,196,106,.16);border-radius:18px;padding:22px;
+  box-shadow:0 22px 60px rgba(4,7,22,.4);backdrop-filter:blur(6px);
+}
+.panel-title{margin:0 0 14px;font-size:14px;font-weight:700;letter-spacing:.01em;color:var(--gold-hi)}
+.hr{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:20px 0}
+.hint{margin:-4px 0 14px;font-size:12.5px;color:var(--muted);line-height:1.6}
+.fineprint{margin:12px 0 0;font-size:11.5px;color:var(--muted);opacity:.8;line-height:1.6}
+.fineprint.center{text-align:center;margin-top:30px}
+
+/* ---------- fields ---------- */
+.lbl{display:block;font-size:11px;letter-spacing:.1em;color:var(--muted);margin:0 0 7px;text-transform:uppercase}
+.field,.emoji,.msg,.rarity,.link-input{
+  width:100%;background:rgba(8,11,28,.55);border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:11px 13px;color:var(--ink);font:inherit;
+}
+.field{margin:0 0 16px}
+.field:focus,.msg:focus,.emoji:focus{border-color:rgba(232,196,106,.55);outline:none}
+.emoji{text-align:center;padding:11px 4px;font-size:18px}
+.msg{resize:vertical;min-height:56px;line-height:1.55}
+.rarity{padding:11px 8px;font-size:12.5px;cursor:pointer}
+
+.pills{display:flex;gap:8px;margin:0 0 4px}
+.pill{
+  flex:0 0 auto;font:inherit;padding:9px 18px;border-radius:999px;cursor:pointer;
+  background:rgba(8,11,28,.5);border:1px solid rgba(255,255,255,.1);color:var(--muted);
+  transition:.18s;
+}
+.pill:hover{border-color:var(--line);color:var(--ink)}
+.pill.on{background:rgba(232,196,106,.15);border-color:rgba(232,196,106,.6);color:var(--gold-hi);font-weight:700}
+
+.rows-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rows-head .panel-title{margin:0}
+.counter{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rows-foot{display:flex;align-items:center;gap:14px;margin-top:6px}
+
+.row{
+  display:grid;gap:8px;align-items:start;margin-bottom:9px;
+  grid-template-columns:58px minmax(0,1fr) 132px 42px;
+  grid-template-areas:"emoji msg rarity del";
+}
+.row .emoji{grid-area:emoji}
+.row .msg{grid-area:msg}
+.row .rarity{grid-area:rarity}
+.row .del{grid-area:del}
+.del{padding:0;height:42px;font-size:18px;line-height:1}
+
+.errors{margin:0 0 14px;padding:12px 14px 12px 30px;list-style:disc;border-radius:12px;
+  background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);color:#ffc9c9;font-size:13px}
+.errors li+li{margin-top:4px}
+
+/* ---------- buttons ---------- */
+.btn{
+  font:inherit;border-radius:999px;padding:12px 20px;cursor:pointer;
+  border:1px solid transparent;transition:.18s;white-space:nowrap;
+}
+.btn.gold{background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#1c1708;font-weight:700;
+  box-shadow:0 10px 26px rgba(232,196,106,.2)}
+.btn.gold:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+.btn.ghost{background:rgba(255,255,255,.045);border-color:var(--line);color:var(--ink);text-decoration:none;display:inline-block}
+.btn.ghost:hover:not(:disabled){background:rgba(232,196,106,.1);border-color:rgba(232,196,106,.5)}
+.btn.big{padding:15px 32px;font-size:15.5px;width:100%}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.linklike{background:none;border:0;color:var(--muted);font:inherit;font-size:12.5px;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0}
+.linklike:hover{color:var(--gold-hi)}
+
+.linkbox{margin-top:18px;padding:16px;border-radius:14px;background:rgba(232,196,106,.07);border:1px solid var(--line)}
+.linkbox-title{margin:0 0 10px;font-size:12.5px;color:var(--gold-hi);font-weight:700}
+.linkrow{display:flex;gap:8px}
+.link-input{font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.linkactions{margin-top:10px}
+
+/* ---------- preview ---------- */
+.preview{text-align:center}
+.pv-title{margin:6px 0 6px;font-size:17px;font-weight:700;color:var(--gold-hi);overflow-wrap:break-word}
+.pv-q{margin:0;font-size:12.5px;color:var(--muted);overflow-wrap:break-word}
+.pv-cards{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:18px 0 14px}
+.mini-card{
+  width:54px;height:84px;border-radius:9px;color:var(--gold);font-size:9px;
+  border:1px solid rgba(232,196,106,.4);
+  background:linear-gradient(160deg,#1e2760,#0e1330);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  box-shadow:0 6px 18px rgba(0,0,0,.35);
+}
+.mini-num{font-size:17px;font-weight:600}
+.pv-meta{margin:0;font-size:11.5px;color:var(--muted)}
+
+/* ---------- cards ---------- */
+.stage{margin:8px 0 0}
+.cards{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:center;min-height:236px;padding:8px 0}
+.cards.shuffling{filter:blur(1px)}
+.stage-foot{text-align:center;margin-top:26px}
+.stage-foot .btn.big{width:auto;min-width:200px}
+
+.card{
+  width:134px;height:208px;background:none;border:0;padding:0;cursor:pointer;
+  perspective:900px;
+  transform:rotate(var(--rot)) translateY(var(--dy));
+  transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s ease;
+  transition-delay:var(--delay);
+}
+.card.stacked{transform:translateY(30px) rotate(0deg) scale(.9);opacity:0}
+.card:hover:not(.dimmed):not(.chosen):not(.stacked){
+  transform:rotate(var(--rot)) translateY(calc(var(--dy) - 16px)) scale(1.03);transition-delay:0ms}
+.card.chosen{transform:translate(var(--cx,0px),calc(var(--cy,0px) - 14px)) rotate(0deg) scale(1.1);
+  z-index:5;transition-delay:0ms}
+.card.dimmed{opacity:.14;transform:rotate(var(--rot)) translateY(calc(var(--dy) + 20px)) scale(.88);
+  pointer-events:none;transition-delay:0ms}
+
+.card-inner{position:relative;display:block;width:100%;height:100%;
+  transform-style:preserve-3d;transition:transform .68s cubic-bezier(.2,.7,.2,1)}
+.card.revealed .card-inner{transform:rotateY(180deg)}
+.card-back,.card-front{
+  position:absolute;inset:0;border-radius:14px;overflow:hidden;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+}
+.card-back{
+  background:linear-gradient(160deg,#20296a 0%,#161d4a 46%,#0d1230 100%);
+  border:1px solid rgba(232,196,106,.45);color:var(--gold);
+  box-shadow:0 12px 34px rgba(0,0,0,.45);
+}
+.card-back::after{
+  content:"";position:absolute;inset:9px;border:1px solid rgba(232,196,106,.28);border-radius:8px;
+  pointer-events:none;
+}
+.card-back .glyph{font-size:15px;opacity:.85;animation:glow 3.2s ease-in-out infinite alternate}
+.card-back .num{font-size:34px;font-weight:600;letter-spacing:.02em}
+@keyframes glow{from{opacity:.45}to{opacity:1}}
+
+.card-front{
+  transform:rotateY(180deg);
+  background:linear-gradient(160deg,#f8f4e8,#e9e1ca);
+  border:1px solid rgba(0,0,0,.14);color:#2a2b3c;
+  box-shadow:0 16px 44px rgba(0,0,0,.5);
+}
+.front-emoji{font-size:50px;line-height:1}
+.front-star{color:#a8811f;letter-spacing:3px;font-size:13px}
+.card.holo .card-front::after{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:14px;
+  background:linear-gradient(115deg,
+    rgba(255,95,109,.42),rgba(255,195,113,.42),rgba(71,224,160,.42),
+    rgba(79,172,254,.42),rgba(200,109,215,.42),rgba(255,95,109,.42));
+  background-size:320% 320%;animation:holo 3.4s linear 3;
+}
+.card.holo .card-front{box-shadow:0 16px 44px rgba(0,0,0,.5),0 0 34px rgba(232,196,106,.55)}
+.card.holo .front-emoji,.card.holo .front-star{position:relative;z-index:1}
+@keyframes holo{0%{background-position:0% 50%}100%{background-position:320% 50%}}
+
+/* ---------- result ---------- */
+.result{
+  position:relative;z-index:10;
+  margin:28px auto 0;max-width:620px;text-align:center;padding:28px 22px;
+  border-radius:20px;background:rgba(255,255,255,.045);border:1px solid var(--line);
+  box-shadow:0 24px 60px rgba(4,7,22,.45);
+}
+.result.jackpot{border-color:rgba(232,196,106,.65);box-shadow:0 0 0 1px rgba(232,196,106,.2),0 26px 70px rgba(232,196,106,.14)}
+.res-emoji{font-size:42px;line-height:1}
+.res-rarity{margin-top:8px;font-size:10.5px;letter-spacing:.2em;color:var(--muted)}
+.res-rarity.r3{color:var(--gold-hi)}
+.res-msg{
+  white-space:pre-wrap;font-size:clamp(17px,3.4vw,21px);line-height:1.68;
+  margin:16px auto 22px;max-width:34ch;min-height:3.4em;overflow-wrap:break-word;color:#fff;
+}
+.res-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+.sound{
+  position:fixed;top:14px;right:14px;z-index:60;width:40px;height:40px;border-radius:50%;
+  background:rgba(8,11,28,.7);border:1px solid var(--line);color:var(--ink);
+  font-size:16px;cursor:pointer;line-height:1;
+}
+.sound:hover{border-color:rgba(232,196,106,.6)}
+
+/* ---------- fx ---------- */
+.fx-flash{
+  position:fixed;inset:0;z-index:55;pointer-events:none;
+  background:radial-gradient(circle at 50% 46%,rgba(245,223,163,.85),rgba(245,223,163,0) 55%);
+  animation:fxflash .5s ease-out forwards;
+}
+.fx-flash.soft{animation:fxsoft .3s ease-out forwards}
+@keyframes fxflash{0%{opacity:0;transform:scale(.6)}25%{opacity:1}100%{opacity:0;transform:scale(1.7)}}
+@keyframes fxsoft{0%{opacity:.5}100%{opacity:0}}
+@keyframes fxshake{0%,100%{transform:translate(0,0)}20%{transform:translate(-7px,3px)}
+  40%{transform:translate(6px,-4px)}60%{transform:translate(-4px,-2px)}80%{transform:translate(3px,4px)}}
+.shaking{animation:fxshake .45s ease-in-out}
+
+/* ---------- focus ---------- */
+:where(button,input,textarea,select,a):focus-visible{
+  outline:2px solid var(--gold-hi);outline-offset:3px;border-radius:6px}
+
+/* ---------- responsive ---------- */
+@media (max-width:860px){
+  .grid{grid-template-columns:1fr}
+  .preview-panel{order:-1}
+}
+@media (max-width:640px){
+  .row{grid-template-columns:52px minmax(0,1fr) 42px;grid-template-areas:"emoji msg del" "rarity rarity rarity"}
+}
+@media (max-width:460px){
+  #app{padding:24px 14px 56px}
+  .panel{padding:18px 15px;border-radius:15px}
+  .cards{gap:10px;min-height:180px}
+  .card{width:96px;height:150px}
+  .card-back .num{font-size:26px}
+  .front-emoji{font-size:38px}
+  .result{padding:22px 16px}
+  .res-actions .btn{padding:11px 16px;font-size:14px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  body::before{animation:none}
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important}
+}
+
+.fragbox{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.fragbox .fineprint{margin:0 0 8px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<canvas id="fx" aria-hidden="true"></canvas>
+<script type="module">
+/* ---- codec.mjs ---- */
+const FLAG_PLAIN = '0';
+const FLAG_DEFLATE = '1';
+
+function bytesToB64url(bytes) {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  const b64 = typeof btoa === 'function'
+    ? btoa(bin)
+    : Buffer.from(bytes).toString('base64');
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlToBytes(str) {
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+  if (typeof atob === 'function') {
+    const bin = atob(b64 + pad);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  return new Uint8Array(Buffer.from(b64 + pad, 'base64'));
+}
+
+async function pipe(bytes, stream) {
+  const res = new Response(new Blob([bytes]).stream().pipeThrough(stream));
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+async function encode(deck, { compress = true } = {}) {
+  const bytes = new TextEncoder().encode(JSON.stringify(deck));
+  if (compress && typeof CompressionStream === 'function') {
+    try {
+      const out = await pipe(bytes, new CompressionStream('deflate-raw'));
+      return FLAG_DEFLATE + bytesToB64url(out);
+    } catch { /* 압축 실패 시 원문 경로로 폴백 */ }
+  }
+  return FLAG_PLAIN + bytesToB64url(bytes);
+}
+
+async function decode(payload) {
+  try {
+    if (typeof payload !== 'string' || payload.length < 2) throw new Error('short');
+    const flag = payload[0];
+    const body = payload.slice(1);
+    if (!/^[A-Za-z0-9_-]+$/.test(body)) throw new Error('charset');
+    let bytes = b64urlToBytes(body);
+    if (flag === FLAG_DEFLATE) {
+      bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
+    } else if (flag !== FLAG_PLAIN) {
+      throw new Error('flag');
+    }
+    const deck = JSON.parse(new TextDecoder().decode(bytes));
+    if (!deck || typeof deck !== 'object' || !Array.isArray(deck.c)) throw new Error('shape');
+    return deck;
+  } catch {
+    throw new Error('BAD_PAYLOAD');
+  }
+}
+
+/* ---- deck.mjs ---- */
+const LIMITS = { title: 40, question: 80, message: 200, cards: 30 };
+const WEIGHTS = { 1: 6, 2: 3, 3: 1 };
+const CARD_COUNTS = [3, 5, 7];
+const DEFAULT_TITLE = '무엇이든 물어보세요';
+const DEFAULT_EMOJI = '✨';
+const RARITY_LABEL = { 1: '★ 흔함', 2: '★★ 조금 귀함', 3: '★★★ 매우 귀함' };
+
+const clampText = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+function emptyDeck() {
+  return { t: DEFAULT_TITLE, q: '', n: 3, c: [{ e: DEFAULT_EMOJI, m: '', r: 1 }] };
+}
+
+function normalize(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const cards = (Array.isArray(src.c) ? src.c : [])
+    .map((x) => (x && typeof x === 'object' ? x : {}))
+    .map((x) => ({
+      e: clampText(x.e, 8) || DEFAULT_EMOJI,
+      m: typeof x.m === 'string' ? x.m.trim().slice(0, LIMITS.message) : '',
+      r: [1, 2, 3].includes(Number(x.r)) ? Number(x.r) : (Number(x.r) > 3 ? 3 : 1),
+    }))
+    .filter((x) => x.m.length > 0)
+    .slice(0, LIMITS.cards);
+
+  return {
+    t: clampText(src.t, LIMITS.title) || DEFAULT_TITLE,
+    q: clampText(src.q, LIMITS.question),
+    n: CARD_COUNTS.includes(Number(src.n)) ? Number(src.n) : 3,
+    c: cards.length ? cards : emptyDeck().c,
+  };
+}
+
+function validate(deck) {
+  const errs = [];
+  const cards = Array.isArray(deck?.c) ? deck.c : [];
+  const filled = cards.filter((x) => typeof x?.m === 'string' && x.m.trim().length > 0);
+  if (filled.length === 0) errs.push('문구를 최소 1개 입력해주세요.');
+  if (filled.length > LIMITS.cards) errs.push(`문구는 최대 ${LIMITS.cards}개까지 넣을 수 있어요.`);
+  if (typeof deck?.t === 'string' && deck.t.length > LIMITS.title) errs.push(`제목은 ${LIMITS.title}자까지 가능해요.`);
+  if (typeof deck?.q === 'string' && deck.q.length > LIMITS.question) errs.push(`질문은 ${LIMITS.question}자까지 가능해요.`);
+  if (cards.some((x) => typeof x?.m === 'string' && x.m.length > LIMITS.message)) {
+    errs.push(`문구 하나는 ${LIMITS.message}자까지 가능해요.`);
+  }
+  return errs;
+}
+
+function pickIndex(deck, rnd = Math.random) {
+  const cards = deck.c;
+  const weights = cards.map((x) => WEIGHTS[x.r] ?? WEIGHTS[1]);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let roll = rnd() * total;
+  for (let i = 0; i < cards.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) return i;
+  }
+  return cards.length - 1;
+}
+
+/* ---- dom.mjs ---- */
+function el(tag, props = {}, children = []) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') node.className = v;
+    else if (k === 'text') node.textContent = v;
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
+    else node.setAttribute(k, v === true ? '' : String(v));
+  }
+  for (const c of [].concat(children)) {
+    if (c === null || c === undefined || c === false) continue;
+    node.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return node;
+}
+
+const qs = (sel, root = document) => root.querySelector(sel);
+
+/** null/false 자식을 걸러서 붙인다 (DOM append는 null을 "null" 문자열로 바꾼다) */
+function mount(root, ...nodes) {
+  root.textContent = '';
+  for (const n of nodes) if (n) root.append(n);
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const reducedMotion = () =>
+  window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* execCommand 폴백으로 진행 */ }
+  try {
+    const ta = el('textarea', { value: text, style: 'position:fixed;opacity:0;top:0;left:0' });
+    document.body.append(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/* ---- fx.mjs ---- */
+let ctx2d = null;
+let parts = [];
+let raf = 0;
+
+function setup() {
+  const cv = document.getElementById('fx');
+  if (!cv) return null;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.floor(window.innerWidth * dpr);
+  cv.height = Math.floor(window.innerHeight * dpr);
+  ctx2d = cv.getContext('2d');
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx2d;
+}
+
+window.addEventListener('resize', () => { if (parts.length) setup(); });
+
+function loop() {
+  const c = ctx2d;
+  if (!c) { raf = 0; return; }
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  c.clearRect(0, 0, w, h);
+  parts = parts.filter((p) => p.life > 0 && p.y < h + 80);
+  for (const p of parts) {
+    p.life -= 1 / 60;
+    p.vy += p.g;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.rot += p.vrot;
+    c.save();
+    c.globalAlpha = Math.max(0, Math.min(1, p.life / p.fade));
+    c.translate(p.x, p.y);
+    c.rotate(p.rot);
+    c.font = `${p.size}px serif`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(p.ch, 0, 0);
+    c.restore();
+  }
+  if (parts.length) {
+    raf = requestAnimationFrame(loop);
+  } else {
+    c.clearRect(0, 0, w, h);
+    raf = 0;
+  }
+}
+
+function start() {
+  if (!ctx2d) setup();
+  if (!raf) raf = requestAnimationFrame(loop);
+}
+
+/** origin을 주면 그 지점에서, 없으면 화면 상단 1/3 지점에서 분출한다 */
+function burst(emoji, rarity = 1, origin = null) {
+  if (reducedMotion()) return;
+  const count = rarity >= 3 ? 140 : rarity === 2 ? 90 : 60;
+  const ch = emoji || '✨';
+  const ox = origin ? origin.x : window.innerWidth / 2;
+  const oy = origin ? origin.y : window.innerHeight * 0.34;
+  for (let i = 0; i < count; i++) {
+    // 위쪽 반원 전체로 넓게 퍼뜨려 결과 문구를 가리지 않게 한다
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.7;
+    const sp = 8 + Math.random() * 13;
+    parts.push({
+      ch,
+      x: ox + (Math.random() - 0.5) * 60,
+      y: oy + (Math.random() - 0.5) * 40,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp,
+      g: 0.12 + Math.random() * 0.06,
+      size: 14 + Math.random() * 20,
+      rot: Math.random() * Math.PI,
+      vrot: (Math.random() - 0.5) * 0.22,
+      life: 1.3 + Math.random() * 0.9,
+      fade: 1.0,
+    });
+  }
+  start();
+}
+
+function rain(emoji, count = 40) {
+  if (reducedMotion()) return;
+  const ch = emoji || '✨';
+  for (let i = 0; i < count; i++) {
+    parts.push({
+      ch,
+      x: Math.random() * window.innerWidth,
+      y: -40 - Math.random() * 380,
+      vx: (Math.random() - 0.5) * 1.4,
+      vy: 1.5 + Math.random() * 2.5,
+      g: 0.03,
+      size: 16 + Math.random() * 16,
+      rot: Math.random() * Math.PI,
+      vrot: (Math.random() - 0.5) * 0.1,
+      life: 2.6,
+      fade: 2.6,
+    });
+  }
+  start();
+}
+
+function flash() {
+  const node = document.createElement('div');
+  node.className = reducedMotion() ? 'fx-flash soft' : 'fx-flash';
+  document.body.append(node);
+  node.addEventListener('animationend', () => node.remove(), { once: true });
+  setTimeout(() => node.remove(), 1200);
+}
+
+function shake() {
+  if (reducedMotion()) return;
+  const app = document.getElementById('app');
+  if (!app) return;
+  app.classList.remove('shaking');
+  void app.offsetWidth;
+  app.classList.add('shaking');
+  app.addEventListener('animationend', () => app.classList.remove('shaking'), { once: true });
+}
+
+/* ---- sfx.mjs ---- */
+let ctx = null;
+let enabled = true;
+
+try { enabled = localStorage.getItem('aa-sound') !== 'off'; } catch { /* 저장소 차단 시 기본 켜짐 */ }
+
+function ac() {
+  try {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  } catch {
+    return null;
+  }
+}
+
+function sfxEnabled() { return enabled; }
+
+function sfxSetEnabled(on) {
+  enabled = !!on;
+  try { localStorage.setItem('aa-sound', enabled ? 'on' : 'off'); } catch { /* 무시 */ }
+}
+
+function tone({ type = 'sine', from, to, dur = 0.3, gain = 0.16, delay = 0 }) {
+  const c = ac();
+  if (!c) return;
+  const t0 = c.currentTime + delay;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, t0);
+  if (to && to !== from) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(c.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.05);
+}
+
+function noise(dur = 0.18, freq = 1200) {
+  const c = ac();
+  if (!c) return;
+  const len = Math.max(1, Math.floor(c.sampleRate * dur));
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const bp = c.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = freq;
+  bp.Q.value = 0.9;
+  const g = c.createGain();
+  g.gain.value = 0.13;
+  src.connect(bp).connect(g).connect(c.destination);
+  src.start();
+}
+
+function sfxPlay(name) {
+  if (!enabled) return;
+  try {
+    if (name === 'shuffle') {
+      noise(0.16, 1400);
+      setTimeout(() => noise(0.13, 1100), 140);
+      setTimeout(() => noise(0.11, 900), 280);
+    } else if (name === 'pick') {
+      tone({ from: 660, to: 880, dur: 0.12, gain: 0.12 });
+    } else if (name === 'reveal') {
+      tone({ type: 'triangle', from: 440, to: 1320, dur: 0.35, gain: 0.14 });
+    } else if (name === 'jackpot') {
+      [523.25, 659.25, 783.99].forEach((f, i) => {
+        tone({ from: f, to: f, dur: 0.6, gain: 0.09, delay: i * 0.07 });
+      });
+    }
+  } catch { /* 오디오 실패는 무시 */ }
+}
+
+function vibrate(rarity) {
+  try { navigator.vibrate?.(rarity >= 3 ? [40, 60, 90] : 30); } catch { /* 무시 */ }
+}
+
+/* ---- builder.mjs ---- */
+const PRIVACY_NOTE =
+  '문구는 서버에 저장되지 않고 링크 안에 담깁니다. 링크를 가진 사람은 모든 문구를 볼 수 있으니 기밀 내용은 넣지 마세요.';
+
+const SAMPLE = {
+  t: '올여름 나의 여행운',
+  q: '나를 휴가지로 이끌어 줄 카드를 골라주세요',
+  n: 3,
+  c: [
+    { e: '🌊', m: '바다로 떠나세요.\n파도 소리가 답을 알려줍니다.', r: 1 },
+    { e: '⛰️', m: '산으로 가세요. 높이 오를수록 마음이 가벼워집니다.', r: 1 },
+    { e: '🏙️', m: '가까운 도시로 훌쩍. 낯선 골목에서 답을 찾게 됩니다.', r: 2 },
+    { e: '🍀', m: '이번 여름, 어디를 가든 행운이 따릅니다.', r: 3 },
+  ],
+};
+
+function mountBuilder(root, initialDeck, notice) {
+  const draft = initialDeck
+    ? { ...normalize(initialDeck) }
+    : { t: '', q: '', n: 3, c: [{ e: '', m: '', r: 1 }] };
+
+  const rowsBox = el('div', { class: 'rows', 'data-testid': 'b-rows' });
+  const counter = el('span', { class: 'counter' });
+  const addBtn = el('button', {
+    class: 'btn ghost add',
+    type: 'button',
+    'data-testid': 'b-add',
+    onclick: () => {
+      if (draft.c.length >= LIMITS.cards) return;
+      draft.c.push({ e: '', m: '', r: 1 });
+      renderRows();
+      const last = rowsBox.querySelector(`[data-testid="b-message-${draft.c.length - 1}"]`);
+      last?.focus();
+      touched();
+    },
+  }, '＋ 문구 추가');
+
+  const errorsBox = el('ul', { class: 'errors', 'data-testid': 'b-errors', hidden: true });
+  const linkInput = el('input', { class: 'link-input', 'data-testid': 'b-link', readonly: true, 'aria-label': '공유 링크' });
+  const copyBtn = el('button', { class: 'btn gold', type: 'button', 'data-testid': 'b-copy' }, '링크 복사');
+  const tryBtn = el('a', { class: 'btn ghost', 'data-testid': 'b-try', href: '#' }, '직접 뽑아보기');
+  // 페이지가 iframe 안에서 렌더되면 location.href가 주소창 주소와 다를 수 있다.
+  // 이때는 붙여쓸 조각(#d=...)을 따로 보여줘서 사용자가 직접 링크를 만들 수 있게 한다.
+  const embedded = (() => { try { return window.top !== window.self; } catch { return true; } })();
+  const fragInput = el('input', { class: 'link-input', 'data-testid': 'b-fragment', readonly: true, 'aria-label': '주소 뒤에 붙일 부분' });
+  const fragCopyBtn = el('button', { class: 'btn ghost', type: 'button', 'data-testid': 'b-fragment-copy' }, '조각 복사');
+  const fragBox = el('div', { class: 'fragbox', hidden: !embedded }, [
+    el('p', { class: 'fineprint', text: '위 링크가 주소창 주소와 다르면, 주소창 주소 끝에 아래 조각을 붙여서 공유하세요.' }),
+    el('div', { class: 'linkrow' }, [fragInput, fragCopyBtn]),
+  ]);
+
+  const linkBox = el('div', { class: 'linkbox', hidden: true }, [
+    el('p', { class: 'linkbox-title', text: '공유 링크가 만들어졌어요' }),
+    el('div', { class: 'linkrow' }, [linkInput, copyBtn]),
+    el('div', { class: 'linkactions' }, [tryBtn]),
+    fragBox,
+  ]);
+
+  const previewBox = el('div', { class: 'preview', 'data-testid': 'b-preview' });
+
+  const titleInput = el('input', {
+    class: 'field', 'data-testid': 'b-title', maxlength: LIMITS.title,
+    placeholder: DEFAULT_TITLE, value: draft.t, 'aria-label': '제목',
+    oninput: (e) => { draft.t = e.target.value; touched(); },
+  });
+
+  const questionInput = el('input', {
+    class: 'field', 'data-testid': 'b-question', maxlength: LIMITS.question,
+    placeholder: '궁금한 걸 떠올리고 카드를 뽑으세요', value: draft.q, 'aria-label': '질문',
+    oninput: (e) => { draft.q = e.target.value; touched(); },
+  });
+
+  const countPills = el('div', { class: 'pills', role: 'radiogroup', 'aria-label': '카드 장수' },
+    CARD_COUNTS.map((n) => el('button', {
+      class: 'pill' + (draft.n === n ? ' on' : ''),
+      type: 'button', role: 'radio', 'aria-checked': String(draft.n === n),
+      'data-testid': `b-count-${n}`,
+      onclick: (e) => {
+        draft.n = n;
+        countPills.querySelectorAll('.pill').forEach((p) => {
+          p.classList.remove('on');
+          p.setAttribute('aria-checked', 'false');
+        });
+        e.currentTarget.classList.add('on');
+        e.currentTarget.setAttribute('aria-checked', 'true');
+        touched();
+      },
+    }, `${n}장`)));
+
+  const makeBtn = el('button', {
+    class: 'btn gold big', type: 'button', 'data-testid': 'b-make', onclick: makeLink,
+  }, '공유 링크 만들기');
+
+  const sampleBtn = el('button', {
+    class: 'linklike', type: 'button', 'data-testid': 'b-sample',
+    onclick: () => { mountBuilder(root, SAMPLE, null); },
+  }, '예시로 채워보기');
+
+  mount(root,
+    el('header', { class: 'hero' }, [
+      el('p', { class: 'eyebrow', text: '· TAROT DRAW ·' }),
+      el('h1', { class: 'display', text: '무엇이든 물어보세요' }),
+      el('p', { class: 'lead', text: '문구를 미리 써두고 링크 하나만 공유하세요. 링크를 받은 사람이 카드를 뽑으면 문구 하나가 무작위로 나옵니다.' }),
+    ]),
+    notice ? el('p', { class: 'notice', 'data-testid': 'b-notice', text: notice }) : null,
+    el('div', { class: 'grid' }, [
+      el('section', { class: 'panel' }, [
+        el('h2', { class: 'panel-title', text: '1. 화면에 보일 문구' }),
+        el('label', { class: 'lbl', text: '제목' }), titleInput,
+        el('label', { class: 'lbl', text: '질문 한 줄' }), questionInput,
+        el('label', { class: 'lbl', text: '펼칠 카드 장수' }), countPills,
+        el('div', { class: 'hr' }),
+        el('div', { class: 'rows-head' }, [
+          el('h2', { class: 'panel-title', text: '2. 뽑히면 나올 문구' }),
+          counter,
+        ]),
+        el('p', { class: 'hint', text: '어떤 카드를 골라도 문구는 무작위로 배정됩니다. ★가 높을수록 드물게 나와요.' }),
+        rowsBox,
+        el('div', { class: 'rows-foot' }, [addBtn, sampleBtn]),
+        el('div', { class: 'hr' }),
+        errorsBox,
+        makeBtn,
+        el('p', { class: 'fineprint', text: PRIVACY_NOTE }),
+        linkBox,
+      ]),
+      el('aside', { class: 'panel preview-panel' }, [
+        el('h2', { class: 'panel-title', text: '미리보기' }),
+        previewBox,
+      ]),
+    ]),
+  );
+
+  copyBtn.addEventListener('click', async () => {
+    const ok = await copyText(linkInput.value);
+    copyBtn.textContent = ok ? '복사됨!' : '직접 복사해주세요';
+    if (!ok) { linkInput.removeAttribute('readonly'); linkInput.select(); }
+    setTimeout(() => { copyBtn.textContent = '링크 복사'; }, 1600);
+  });
+
+  fragCopyBtn.addEventListener('click', async () => {
+    const ok = await copyText(fragInput.value);
+    fragCopyBtn.textContent = ok ? '복사됨!' : '직접 복사해주세요';
+    if (!ok) { fragInput.removeAttribute('readonly'); fragInput.select(); }
+    setTimeout(() => { fragCopyBtn.textContent = '조각 복사'; }, 1600);
+  });
+
+  function touched() {
+    linkBox.hidden = true;
+    renderPreview();
+    counter.textContent = `${draft.c.length} / ${LIMITS.cards}`;
+    addBtn.disabled = draft.c.length >= LIMITS.cards;
+  }
+
+  function renderRows() {
+    rowsBox.textContent = '';
+    draft.c.forEach((card, i) => {
+      const emoji = el('input', {
+        class: 'emoji', 'data-testid': `b-emoji-${i}`, maxlength: 8, value: card.e,
+        placeholder: '✨', 'aria-label': `${i + 1}번 문구의 이모지`,
+        oninput: (e) => { card.e = e.target.value; touched(); },
+      });
+      const msg = el('textarea', {
+        class: 'msg', 'data-testid': `b-message-${i}`, maxlength: LIMITS.message, rows: 2,
+        placeholder: '뽑으면 보여줄 문구를 적어주세요', 'aria-label': `${i + 1}번 문구`,
+        oninput: (e) => { card.m = e.target.value; touched(); },
+      }, card.m);
+      const rarity = el('select', {
+        class: 'rarity', 'data-testid': `b-rarity-${i}`, 'aria-label': `${i + 1}번 문구의 등급`,
+        onchange: (e) => { card.r = Number(e.target.value); touched(); },
+      }, [1, 2, 3].map((r) => el('option', { value: r, selected: card.r === r }, RARITY_LABEL[r])));
+      rarity.value = String(card.r);
+      const del = el('button', {
+        class: 'btn ghost del', type: 'button', 'data-testid': `b-remove-${i}`,
+        'aria-label': `${i + 1}번 문구 삭제`, disabled: draft.c.length <= 1,
+        onclick: () => { draft.c.splice(i, 1); renderRows(); touched(); },
+      }, '×');
+      rowsBox.append(el('div', { class: 'row' }, [emoji, msg, rarity, del]));
+    });
+  }
+
+  function renderErrors(errs) {
+    errorsBox.textContent = '';
+    errorsBox.hidden = errs.length === 0;
+    errs.forEach((m) => errorsBox.append(el('li', { text: m })));
+  }
+
+  function renderPreview() {
+    previewBox.textContent = '';
+    const filled = draft.c.filter((x) => x.m.trim().length > 0);
+    previewBox.append(
+      el('p', { class: 'pv-title', text: draft.t.trim() || DEFAULT_TITLE }),
+      el('p', { class: 'pv-q', text: draft.q.trim() || '궁금한 걸 떠올리고 카드를 뽑으세요' }),
+      el('div', { class: 'pv-cards' }, Array.from({ length: draft.n }, (_, i) =>
+        el('div', { class: 'mini-card' }, [
+          el('span', { class: 'mini-glyph', text: '☾' }),
+          el('span', { class: 'mini-num', text: String(i + 1) }),
+          el('span', { class: 'mini-glyph', text: '✦' }),
+        ]))),
+      el('p', { class: 'pv-meta', text: filled.length ? `문구 ${filled.length}개가 무작위로 배정됩니다` : '아직 문구가 없어요' }),
+    );
+  }
+
+  async function makeLink() {
+    const errs = validate(draft);
+    renderErrors(errs);
+    if (errs.length) return null;
+    const fragment = `#d=${await encode(normalize(draft))}`;
+    const url = `${location.href.split('#')[0]}${fragment}`;
+    linkInput.value = url;
+    fragInput.value = fragment;
+    tryBtn.setAttribute('href', url);
+    linkBox.hidden = false;
+    linkBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    return url;
+  }
+
+  renderRows();
+  touched();
+}
+
+/* ---- player.mjs ---- */
+function mountPlayer(root, deck) {
+  let state = 'intro';
+  let resultIdx = null;
+
+  const cardsBox = el('div', { class: 'cards', 'data-testid': 'p-cards' });
+  const shuffleBtn = el('button', {
+    class: 'btn gold big', type: 'button', 'data-testid': 'p-shuffle', onclick: () => shuffle(),
+  }, '카드 섞기');
+
+  const resultEmoji = el('div', { class: 'res-emoji', 'data-testid': 'p-result-emoji' });
+  const resultRarity = el('div', { class: 'res-rarity', 'data-testid': 'p-result-rarity' });
+  const resultMsg = el('p', { class: 'res-msg', 'data-testid': 'p-result-message' });
+  const againBtn = el('button', { class: 'btn gold', type: 'button', 'data-testid': 'p-again', onclick: () => shuffle() }, '한 번 더 뽑기');
+  const copyBtn = el('button', { class: 'btn ghost', type: 'button', 'data-testid': 'p-copy' }, '링크 복사');
+  const createBtn = el('button', {
+    class: 'btn ghost', type: 'button', 'data-testid': 'p-create',
+    onclick: () => { location.hash = ''; location.reload(); },
+  }, '나도 만들기');
+
+  const resultBox = el('section', { class: 'result', 'data-testid': 'p-result', hidden: true }, [
+    resultEmoji, resultRarity, resultMsg,
+    el('div', { class: 'res-actions' }, [againBtn, copyBtn, createBtn]),
+  ]);
+
+  const soundBtn = el('button', {
+    class: 'sound', type: 'button', 'data-testid': 'p-sound',
+    'aria-label': '효과음 켜기 끄기',
+    onclick: () => { sfxSetEnabled(!sfxEnabled()); paintSound(); },
+  });
+
+  mount(root,
+    soundBtn,
+    el('header', { class: 'hero play-hero' }, [
+      el('p', { class: 'eyebrow', text: '· TAROT DRAW ·' }),
+      el('h1', { class: 'display', 'data-testid': 'p-title', text: deck.t }),
+      deck.q ? el('p', { class: 'lead', 'data-testid': 'p-question', text: deck.q }) : null,
+    ]),
+    el('div', { class: 'stage' }, [cardsBox, el('div', { class: 'stage-foot' }, [shuffleBtn])]),
+    resultBox,
+    el('p', { class: 'fineprint center', text: '이 링크는 문구를 담고 있어요. 그대로 공유하면 누구나 뽑을 수 있습니다.' }),
+  );
+
+  copyBtn.addEventListener('click', async () => {
+    const ok = await copyText(location.href);
+    copyBtn.textContent = ok ? '복사됨!' : '직접 복사해주세요';
+    setTimeout(() => { copyBtn.textContent = '링크 복사'; }, 1600);
+  });
+
+  function paintSound() {
+    soundBtn.textContent = sfxEnabled() ? '🔊' : '🔇';
+    soundBtn.setAttribute('aria-pressed', String(sfxEnabled()));
+  }
+  paintSound();
+
+  function buildCards() {
+    cardsBox.textContent = '';
+    const mid = (deck.n - 1) / 2;
+    for (let i = 0; i < deck.n; i++) {
+      const offset = i - mid;
+      const front = el('span', { class: 'card-front' }, [
+        el('span', { class: 'front-emoji' }),
+        el('span', { class: 'front-star' }),
+      ]);
+      const back = el('span', { class: 'card-back' }, [
+        el('span', { class: 'glyph', text: '☾' }),
+        el('span', { class: 'num', text: String(i + 1) }),
+        el('span', { class: 'glyph', text: '✦' }),
+      ]);
+      const card = el('button', {
+        class: 'card stacked', type: 'button', 'data-testid': `p-card-${i}`,
+        'aria-label': `${i + 1}번 카드 뽑기`,
+        style: `--rot:${(offset * 4).toFixed(2)}deg; --dy:${(offset * offset * 3).toFixed(1)}px; --delay:${i * 70}ms`,
+        onclick: () => choose(i),
+      }, [el('span', { class: 'card-inner' }, [back, front])]);
+      cardsBox.append(card);
+    }
+  }
+
+  async function shuffle() {
+    if (state === 'shuffle' || state === 'focus' || state === 'reveal') return;
+    state = 'shuffle';
+    resultBox.hidden = true;
+    resultIdx = null;
+    shuffleBtn.hidden = true;
+    cardsBox.classList.add('shuffling');
+    sfxPlay('shuffle');
+    buildCards();
+    await wait(reducedMotion() ? 60 : 420);
+    cardsBox.classList.remove('shuffling');
+    cardsBox.querySelectorAll('.card').forEach((c) => c.classList.remove('stacked'));
+    await wait(reducedMotion() ? 60 : 620);
+    state = 'spread';
+  }
+
+  async function choose(i) {
+    if (state !== 'spread') return;
+    state = 'focus';
+    sfxPlay('pick');
+    resultIdx = pickIndex(deck);
+    const cards = [...cardsBox.querySelectorAll('.card')];
+    // 선택 카드를 카드 영역 중앙으로 옮긴다 (여러 줄로 감싸였을 때도 중앙에 오도록)
+    const picked = cards[i].getBoundingClientRect();
+    const wrap = cardsBox.getBoundingClientRect();
+    cards[i].style.setProperty('--cx', `${Math.round(wrap.left + wrap.width / 2 - picked.left - picked.width / 2)}px`);
+    cards[i].style.setProperty('--cy', `${Math.round(wrap.top + wrap.height / 2 - picked.top - picked.height / 2)}px`);
+    cards.forEach((c, idx) => c.classList.add(idx === i ? 'chosen' : 'dimmed'));
+    await wait(reducedMotion() ? 60 : 430);
+    await reveal(cards[i]);
+  }
+
+  async function reveal(card) {
+    state = 'reveal';
+    const item = deck.c[resultIdx];
+    card.querySelector('.front-emoji').textContent = item.e;
+    card.querySelector('.front-star').textContent = '★'.repeat(item.r);
+    if (item.r >= 3) card.classList.add('holo');
+    flash();
+    sfxPlay('reveal');
+    vibrate(item.r);
+    card.classList.add('revealed');
+    await wait(reducedMotion() ? 80 : 680);
+    const box = card.getBoundingClientRect();
+    await showResult(item, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  }
+
+  async function showResult(item, origin) {
+    state = 'result';
+    resultEmoji.textContent = item.e;
+    resultRarity.textContent = RARITY_LABEL[item.r];
+    resultRarity.className = `res-rarity r${item.r}`;
+    resultBox.hidden = false;
+    resultBox.classList.toggle('jackpot', item.r >= 3);
+    burst(item.e, item.r, origin);
+    if (item.r >= 3) { shake(); rain(item.e, 40); sfxPlay('jackpot'); }
+    await type(resultMsg, item.m);
+  }
+
+  /**
+   * 시간 기반 타이핑. 글자당 setTimeout을 쓰면 타이머 클램핑에 걸려
+   * 긴 문구가 몇 초씩 늦어지므로, rAF로 경과 시간에서 진행률을 계산한다.
+   */
+  function type(node, text) {
+    if (reducedMotion()) { node.textContent = text; return Promise.resolve(); }
+    const chars = [...text];
+    const dur = Math.min(1400, 45 * chars.length);
+    node.textContent = '';
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - t0) / dur);
+        node.textContent = chars.slice(0, Math.ceil(p * chars.length)).join('');
+        if (p < 1) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  buildCards();
+}
+
+/* ---- main.mjs ---- */
+const root = document.getElementById('app');
+let currentHash = null;
+
+function readPayload() {
+  const m = /^#d=(.+)$/.exec(location.hash);
+  return m ? m[1] : null;
+}
+
+async function route() {
+  if (location.hash === currentHash) return;
+  currentHash = location.hash;
+  const payload = readPayload();
+  if (!payload) {
+    mountBuilder(root, null, null);
+    return;
+  }
+  try {
+    mountPlayer(root, normalize(await decode(payload)));
+  } catch {
+    mountBuilder(root, null, '링크가 손상된 것 같아요. 아래에서 문구를 새로 만들어 공유해보세요.');
+  }
+}
+
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
