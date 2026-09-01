@@ -1,14 +1,14 @@
 # 검증 기록 — 무엇이든 물어보세요 (2026-09-01)
 
 실행 환경: Node v24.15.0, Chromium(Playwright MCP), 로컬 정적 서버 `http://localhost:8787`
-검증 대상: `dist/index.html` (빌드 산출물)
+검증 대상: `index.html` (빌드 산출물)
 
 ## 자동 테스트
 
 ```
 node build.mjs
-  ./dist/index.html 생성 완료 (37.7 KB)
-  ./dist/artifact.html 생성 완료 (37.5 KB)
+  ./index.html 생성 완료 (40.5 KB)
+  ./dist/artifact.html 생성 완료 (40.2 KB)
   모듈 8개 인라인, 외부 의존성 0
 
 node --test test/codec.test.mjs test/deck.test.mjs test/build.test.mjs
@@ -57,11 +57,15 @@ node --test test/codec.test.mjs test/deck.test.mjs test/build.test.mjs
 | 홀로그램 애니메이션 | 무한 반복 | 3회 반복 | 무한 애니메이션이 페이지를 idle 상태로 보내지 않아 스크린샷이 타임아웃되고 상시 리페인트가 발생 |
 | git 저장소·커밋 | Task 0 및 각 태스크 말미 커밋 | 생략 | 사용자가 버전관리를 요청하지 않음 |
 
-## 검증하지 못한 항목 (사용자 확인 필요)
+## 배포처 변경 (2026-09-01 추가)
 
-| 항목 | 상태 |
-|---|---|
-| 퍼블리시된 Artifact URL에서의 실제 공유 링크 | **미검증.** 아티팩트가 비공개이고 테스트 브라우저가 claude.ai에 로그인되어 있지 않아 접근 시 "Page not found"가 반환됨. 대신 iframe 환경을 로컬에서 재현해 `location.href`가 주소창 주소와 달라지는 경우의 폴백(`#d=...` 조각 별도 표시)이 동작함을 확인했다 — `embeddedDetected true`, `fragBoxVisible true`. 최상위 창에서는 숨김(`hidden true`) |
+Claude Artifact는 보는 사람도 Claude 로그인이 필요해 공개 공유에 부적합하다는 사용자 피드백에 따라
+**GitHub Pages**로 배포처를 변경했다.
+
+- 저장소: https://github.com/dongyealshin/ask-anything (public)
+- 사이트: https://dongyealshin.github.io/ask-anything/
+- 배포 파일: 루트 `index.html` (Pages source = `main` / `/`)
+- iframe 환경 폴백(`#d=...` 조각 별도 표시)은 그대로 유지 — 로컬 iframe 재현으로 동작 확인(`embeddedDetected true`, `fragBoxVisible true`), 최상위 창에서는 숨김(`hidden true`)
 
 ## 스크린샷
 

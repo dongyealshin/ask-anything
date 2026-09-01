@@ -48,3 +48,8 @@ test('아티팩트 산출물에는 문서 골격 태그가 없다', () => {
   const html = readFileSync(ARTIFACT, 'utf8');
   assert.doesNotMatch(html, /<!doctype|<html|<head|<body/i);
 });
+
+test('배포 파일에 인라인 favicon이 있다 (favicon 404 방지)', () => {
+  const html = readFileSync(DIST, 'utf8');
+  assert.match(html, /<link rel="icon" href="data:image\/svg\+xml,/);
+});
