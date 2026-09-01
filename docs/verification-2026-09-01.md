@@ -67,6 +67,20 @@ Claude Artifact는 보는 사람도 Claude 로그인이 필요해 공개 공유�
 - 배포 파일: 루트 `index.html` (Pages source = `main` / `/`)
 - iframe 환경 폴백(`#d=...` 조각 별도 표시)은 그대로 유지 — 로컬 iframe 재현으로 동작 확인(`embeddedDetected true`, `fragBoxVisible true`), 최상위 창에서는 숨김(`hidden true`)
 
+### 라이브 URL 실검증 (로그인 없이 접근 가능해 이제 검증 가능해진 항목)
+
+| 항목 | 실제 결과 | 판정 |
+|---|---|---|
+| 공유 링크가 주소창 주소와 일치 | `matchesAddressBar: true`. 생성 링크 `https://dongyealshin.github.io/ask-anything/#d=1bZH…` | **통과 (정확)** |
+| iframe 아님 → 조각 폴백 숨김 | `embedded: false`, `fragBoxHidden: true` | 통과 |
+| HTTPS 보안 컨텍스트 | `isSecureContext: true` → `navigator.clipboard` 복사 경로 사용 가능 | 통과 |
+| 생성한 링크를 새로 열어 뽑기 완주 | 제목 `올여름 나의 여행운`, 질문·카드 3장 정상, 결과 `🌊 / ★ 흔함 / 바다로 떠나세요.
+파도 소리가 답을 알려줍니다.` | **통과 (정확)** |
+| 라이브 콘솔 에러 | `favicon.ico 404` 1건만 발생 → 인라인 SVG favicon 추가로 제거하고 재발 방지 테스트 추가 | 수정 완료 |
+| 배포 파일 자기완결성 | GitHub raw로 받은 `index.html`에서 외부 http(s) 참조 0건, 43,124 bytes | 통과 |
+
+스크린샷: `docs/screenshots/live-builder.png` (라이브 사이트 첫 화면)
+
 ## 스크린샷
 
 | 파일 | 내용 |
